@@ -1,0 +1,441 @@
+<html>
+    <style>
+    .chatbot-widget * { margin: 0; padding: 0; box-sizing: border-box; }
+    .chatbot-widget { position: fixed; bottom: 20px; right: 20px; z-index: 99999; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .chat-trigger { width: 70px; height: 70px; background: linear-gradient(135deg, #e74c3c, #c0392b); border-radius: 50%; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(231, 76, 60, 0.4); transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+    .chat-trigger:hover { transform: scale(1.05); box-shadow: 0 6px 25px rgba(231, 76, 60, 0.6); }
+    .chat-trigger svg { width: 24px; height: 24px; fill: white; transition: transform 0.3s ease; margin-bottom: 2px; }
+    .chat-trigger-text { color: white; font-size: 9px; font-weight: 500; text-align: center; line-height: 1.1; max-width: 60px; }
+    .chat-trigger.active svg { transform: rotate(180deg); }
+    .chat-trigger::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 50%; background: inherit; animation: pulse 2s infinite; opacity: 0.7; }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 0.3; } 100% { transform: scale(1); opacity: 0.7; } }
+    .chat-window { position: absolute; bottom: 85px; right: 0; width: 350px; height: 480px; background: white; border-radius: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.4); overflow: hidden; transform: scale(0); transform-origin: bottom right; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); opacity: 0; }
+    .chat-window.active { transform: scale(1); opacity: 1; }
+    .chat-header { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; padding: 15px; text-align: center; border-radius: 25px 25px 0 0; }
+    .chat-header h3 { font-size: 1.1rem; margin-bottom: 5px; }
+    .chat-header p { font-size: 0.9rem; opacity: 0.9; }
+    .chat-body { height: 320px; padding: 15px; overflow-y: auto; background: #f8f9fa; }
+    .chat-messages { display: flex; flex-direction: column; gap: 15px; }
+    .message { max-width: 80%; padding: 12px 16px; border-radius: 22px; font-size: 0.9rem; line-height: 1.4; animation: messageSlide 0.3s ease; }
+    @keyframes messageSlide { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .message.bot { background: #e74c3c; color: white; align-self: flex-start; border-bottom-left-radius: 4px; }
+    .message.user { background: #34495e; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+    /* ... tout votre CSS existant ... */
+
+  
+
+.message img:hover {
+    transform: scale(1.05);
+}
+    .chat-input-container { padding: 15px; background: white; border-top: 1px solid #eee; border-radius: 0 0 25px 25px; }
+    .chat-input-form { display: flex; gap: 10px; align-items: center; }
+    .chat-input { flex: 1; padding: 12px 16px; border: 2px solid #e1e5e9; border-radius: 30px; outline: none; font-size: 0.9rem; transition: border-color 0.3s ease; }
+    .chat-input:focus { border-color: #e74c3c; }
+    .chat-send-btn { width: 40px; height: 40px; background: linear-gradient(135deg, #e74c3c, #c0392b); border: none; border-radius: 50%; cursor: pointer; transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; }
+    .chat-send-btn:hover { transform: scale(1.1); }
+    .chat-send-btn svg { width: 16px; height: 16px; fill: white; }
+    .typing-indicator { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #e74c3c; color: white; border-radius: 18px; border-bottom-left-radius: 4px; max-width: 80%; align-self: flex-start; word-wrap: break-word; white-space: normal; }
+    .typing-dots { display: flex; gap: 4px; }
+    .typing-dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: typingDot 1.4s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingDot { 0%, 60%, 100% { transform: scale(1); opacity: 0.5; } 30% { transform: scale(1.2); opacity: 1; } }
+    .notification-badge { position: absolute; top: -8px; right: -8px; background: #f39c12; color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; font-weight: bold; animation: bounce 2s infinite; }
+    @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
+    @media (max-width: 768px) { .chatbot-widget { bottom: 15px; right: 15px; } .chat-trigger { width: 60px; height: 60px; } .chat-trigger svg { width: 20px; height: 20px; } .chat-trigger-text { font-size: 8px; max-width: 50px; } .chat-window { width: 300px; height: 400px; bottom: 75px; } .chat-body { height: 250px; } }
+    @media (max-width: 480px) { .chatbot-widget { bottom: 20px; right: 10px; } .chat-trigger { width: 55px; height: 55px; } .chat-trigger svg { width: 18px; height: 18px; } .chat-trigger-text { font-size: 7px; max-width: 45px; } .chat-window { width: calc(100vw - 30px); height: 350px; right: 10px; bottom: 120px; max-width: 300px; } .chat-body { height: 200px; } .chat-input-container { padding: 12px; background: white; border-top: 2px solid #eee; min-height: 70px; } .chat-input-form { display: flex; gap: 8px; align-items: stretch; } .chat-input { flex: 1; padding: 10px 12px; min-height: 40px; font-size: 16px; } .chat-send-btn { width: 45px; height: 45px; flex-shrink: 0; } .chat-header { padding: 10px; } }
+    @media (max-width: 360px) { .chat-window { width: 260px; height: 340px; right: 5px; } .chat-body { height: 190px; } }
+    </style>
+    
+    <div class="chatbot-widget" id="chatbotWidget">
+        <button class="chat-trigger" id="chatTrigger">
+            <svg viewBox="0 0 24 24">
+                <path d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M6,9V7H18V9H6M14,11V13H6V11H14M18,15H6V13H18V15Z" />
+            </svg>
+            <div class="chat-trigger-text">Posez vos questions ici</div>
+            <div class="notification-badge" id="notificationBadge">1</div>
+        </button>
+
+        <div class="chat-window" id="chatWindow">
+            <div class="chat-header">
+                <h3>💬 Assistant virtuel</h3>
+                <p>En ligne • Répond en quelques secondes</p>
+            </div>
+            
+            <div class="chat-body" id="chatBody">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message bot">
+                        👋 Bonjour ! Je suis là pour répondre à toutes vos questions. Comment puis-je vous aider ?
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <form class="chat-input-form" id="chatForm">
+                    <input 
+                        type="text" 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="Tapez votre message..."
+                        maxlength="500"
+                    >
+                    <button type="submit" class="chat-send-btn" id="sendBtn">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    class ChatbotWidget {
+        constructor() {
+            this.isOpen = false;
+            this.isTyping = false;
+            this.messageCount = 0;
+            
+            this.chatTrigger = document.getElementById('chatTrigger');
+            this.chatWindow = document.getElementById('chatWindow');
+            this.chatMessages = document.getElementById('chatMessages');
+            this.chatInput = document.getElementById('chatInput');
+            this.chatForm = document.getElementById('chatForm');
+            this.notificationBadge = document.getElementById('notificationBadge');
+            
+            this.init();
+        }
+
+        init() {
+            this.chatTrigger.addEventListener('click', () => this.toggleChat());
+            this.chatForm.addEventListener('submit', (e) => this.handleSubmit(e));
+            
+            setTimeout(() => {
+                if (!this.isOpen) {
+                    this.showNotification();
+                }
+            }, 5000);
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.chatbot-widget') && this.isOpen) {
+                    this.toggleChat();
+                }
+            });
+        }
+
+        toggleChat() {
+            this.isOpen = !this.isOpen;
+            
+            if (this.isOpen) {
+                this.openChat();
+            } else {
+                this.closeChat();
+            }
+        }
+
+        openChat() {
+            this.chatWindow.classList.add('active');
+            this.chatTrigger.classList.add('active');
+            this.hideNotification();
+            this.chatInput.focus();
+            
+            setTimeout(() => {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }, 100);
+        }
+
+        closeChat() {
+            this.chatWindow.classList.remove('active');
+            this.chatTrigger.classList.remove('active');
+        }
+
+        showNotification() {
+            this.notificationBadge.style.display = 'flex';
+        }
+
+        hideNotification() {
+            this.notificationBadge.style.display = 'none';
+        }
+
+        async handleSubmit(e) {
+            e.preventDefault();
+            const message = this.chatInput.value.trim();
+            
+            if (message) {
+                this.addMessage(message, 'user');
+                this.chatInput.value = '';
+                
+                this.showTyping("En train d'écrire...");
+                
+                try {
+                    const response = await this.sendToAPI(message);
+                    this.hideTyping();
+                    this.addMessage(response, 'bot');
+                } catch (error) {
+                    this.hideTyping();
+                    console.error('Erreur complète:', error);
+                    this.addMessage(error.message || "Désolé, je rencontre un problème technique. Pouvez-vous réessayer ?", 'bot');
+                }
+            }
+        }
+
+addMessage(text, sender) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}`;
+    
+    // Détecter les URLs d'images
+    const imageUrlRegex = /https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp)/gi;
+    const imageUrls = text.match(imageUrlRegex);
+    
+    // Détecter les autres URLs (liens)
+    const linkUrlRegex = /https?:\/\/[^\s]+(?!\.(jpg|jpeg|png|gif|webp))/gi;
+    const linkUrls = text.match(linkUrlRegex);
+    
+    let processedText = text;
+    
+    // Traiter les images
+    if (imageUrls && imageUrls.length > 0) {
+        imageUrls.forEach(url => {
+            const img = document.createElement('img');
+            img.src = url;
+            img.style.cssText = `
+                max-width: 200px; 
+                max-height: 150px; 
+                border-radius: 10px; 
+                margin: 5px 0; 
+                cursor: pointer;
+                object-fit: cover;
+            `;
+            img.addEventListener('click', () => window.open(url, '_blank'));
+            messageDiv.appendChild(img);
+            processedText = processedText.replace(url, '');
+        });
+    }
+    
+    // Traiter les liens (non-images)
+    if (linkUrls && linkUrls.length > 0) {
+        linkUrls.forEach(url => {
+            // Créer un bouton élégant pour le lien
+            const linkButton = document.createElement('div');
+            linkButton.style.cssText = `
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 25px;
+                margin: 8px 0;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                font-weight: 500;
+                text-decoration: none;
+                max-width: 250px;
+            `;
+            
+            // Icône selon le type de lien
+            const icon = this.getLinkIcon(url);
+            linkButton.innerHTML = `
+                ${icon}
+                <span>${this.getLinkText(url)}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                    <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
+                </svg>
+            `;
+            
+            // Effet hover
+            linkButton.addEventListener('mouseenter', () => {
+                linkButton.style.transform = 'translateY(-2px)';
+                linkButton.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+            });
+            linkButton.addEventListener('mouseleave', () => {
+                linkButton.style.transform = 'translateY(0)';
+                linkButton.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+            });
+            
+            // Clic pour ouvrir
+            linkButton.addEventListener('click', () => window.open(url, '_blank'));
+            
+            messageDiv.appendChild(linkButton);
+            processedText = processedText.replace(url, '');
+        });
+    }
+    
+    // Ajouter le texte restant
+    if (processedText.trim()) {
+        const textDiv = document.createElement('div');
+        textDiv.textContent = processedText.trim();
+        textDiv.style.marginTop = '5px';
+        messageDiv.appendChild(textDiv);
+    }
+    
+    this.chatMessages.appendChild(messageDiv);
+    this.scrollToBottom();
+    this.messageCount++;
+}
+
+// Méthodes utilitaires à ajouter dans la classe
+getLinkIcon(url) {
+    if (url.includes('devis') || url.includes('contact') || url.includes('formulaire')) {
+        return '📝'; // Formulaire
+    } else if (url.includes('tel:') || url.includes('phone')) {
+        return '📞'; // Téléphone
+    } else if (url.includes('mail') || url.includes('@')) {
+        return '📧'; // Email
+    } else if (url.includes('facebook') || url.includes('instagram') || url.includes('social')) {
+        return '📱'; // Réseaux sociaux
+    }
+    return '🔗'; // Lien générique
+}
+
+getLinkText(url) {
+    if (url.includes('devis')) return 'Demander un devis';
+    if (url.includes('contact')) return 'Nous contacter';
+    if (url.includes('formulaire')) return 'Remplir le formulaire';
+    if (url.includes('facebook')) return 'Voir sur Facebook';
+    if (url.includes('instagram')) return 'Voir sur Instagram';
+    return 'Voir le lien';
+}
+
+        showTyping(customMessage = null) {
+            if (this.isTyping) return;
+            
+            this.isTyping = true;
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.id = 'typingIndicator';
+            
+            if (customMessage) {
+                typingDiv.innerHTML = `
+                    <span style="margin-right: 10px; flex: 1;">${customMessage}</span>
+                    <div class="typing-dots" style="flex-shrink: 0;">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                `;
+            } else {
+                typingDiv.innerHTML = `
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                `;
+            }
+            
+            this.chatMessages.appendChild(typingDiv);
+            this.scrollToBottom();
+        }
+
+        hideTyping() {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+            this.isTyping = false;
+        }
+
+        scrollToBottom() {
+            setTimeout(() => {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }, 100);
+        }
+
+        async sendToAPI(message) {
+            try {
+                // REMPLACEZ CETTE URL PAR VOTRE WEBHOOK N8N
+                const WEBHOOK_URL = 'https://n8n.satajo.fr/webhook-test/7f2d78c9-c0c6-4004-9a2b-6eb5293de245';
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+                
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    signal: controller.signal,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        user_id: this.getSessionId(),
+                        timestamp: new Date().toISOString(),
+                        source: 'wordpress_widget'
+                    })
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    console.error(`Erreur HTTP: ${response.status} - ${response.statusText}`);
+                    return "Je rencontre une petite difficulté technique. Pouvez-vous reformuler votre question ?";
+                }
+                
+                const responseText = await response.text();
+                if (!responseText || responseText.trim() === '') {
+                    console.error('Réponse vide du serveur');
+                    return "Je n'ai pas trouvé de réponse. Pouvez-vous réessayer ?";
+                }
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('Erreur JSON:', jsonError, 'Réponse brute:', responseText);
+                    return responseText.length > 500 ? 
+                        responseText.substring(0, 500) + "..." : 
+                        responseText;
+                }
+                
+                console.log('Réponse webhook:', data);
+                
+                const botResponse = data.response || data.message || data.text || data.answer;
+                
+                if (!botResponse) {
+                    console.error('Aucune réponse trouvée dans:', data);
+                    return "J'ai reçu une réponse mais je n'arrive pas à la traiter. Pouvez-vous reformuler ?";
+                }
+                
+                return botResponse;
+                
+            } catch (error) {
+                console.error('Erreur détaillée webhook:', error);
+                
+                if (error.name === 'AbortError') {
+                    return 'Votre question est complexe et prend du temps à traiter. Pouvez-vous la reformuler plus simplement ?';
+                }
+                
+                if (error.message.includes('Failed to fetch')) {
+                    return "Je n'arrive pas à me connecter à nos serveurs. Vérifiez votre connexion internet et réessayez.";
+                }
+                
+                if (error.message.includes('JSON')) {
+                    return "J'ai reçu une réponse mais dans un format inattendu. Notre équipe technique va corriger cela.";
+                }
+                
+                if (error.message.includes('CORS')) {
+                    return "Problème de configuration technique. Contactez notre support si cela persiste.";
+                }
+                
+                return "Je rencontre une difficulté temporaire. Veuillez réessayer dans quelques instants.";
+            }
+        }
+
+        getSessionId() {
+            if (!localStorage.getItem('chatbot_session')) {
+                localStorage.setItem('chatbot_session', Date.now().toString());
+            }
+            return localStorage.getItem('chatbot_session');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        window.happyTimesChatbot = new ChatbotWidget();
+    });
+    </script>
+    </body>
+    
+
+//add_action('wp_footer', 'happytimes_chatbot_widget');
+</html>
